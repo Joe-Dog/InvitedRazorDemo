@@ -1,0 +1,88 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@using Microsoft.EntityFrameworkCore
+@using RazorDemo.Components
+@using RazorDemo.Components.Library
+@using RazorDemo.Data
+@using RazorDemo.Models
+@inject AppDbContext DbContext
+
+<PageTitle>Invited Exercise</PageTitle>
+
+<h3>Dynamic ListBox Demo</h3>
+
+<div style="margin-bottom:10px;">
+    <input  @bind="NewItemText" placeholder="New item..." />
+    <button @onclick="AddItem">Add</button>
+    <button @onclick="RemoveItem" disabled="@string.IsNullOrEmpty(Selected)">
+        Remove
+    </button>
+</div>
+
+<DynamicListBox TValue="string" @ref="ListBoxRef"
+                @bind-SelectedValue="Selected"
+                Width="250px"
+                Height="150px">
+    <DynamicListBoxItem TValue="string" Text="StaticA" Value="A" />
+    <DynamicListBoxItem TValue="string" Text="StaticB" Value="B" />
+    <DynamicListBoxItem TValue="string" Text="StaticC" Value="C" />
+</DynamicListBox>
+
+<p>Currently Selected: <strong>@Selected</strong></p>
+
+@code {
+    private const string A = "A";
+    private const string B = "B";
+    private const string C = "C";
+
+    private DynamicListBox<string>? ListBoxRef;
+    private string? Selected;
+    private string? NewItemText;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await DbContext.Database.MigrateAsync();
+
+        var persisted = await DbContext.ListBoxItems
+          .OrderBy(x => x.Id)
+          .ToListAsync();
+
+        foreach (var item in persisted)
+        {
+            ListBoxRef?.AddItem(item.Text, item.Value);
+        }
+    }
+
+    private async Task AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(NewItemText)) return;
+
+        var entity = new ListBoxItem
+        {
+            Text  = NewItemText,
+            Value = NewItemText
+        };
+
+        DbContext.ListBoxItems.Add(entity);
+        await DbContext.SaveChangesAsync();
+
+        ListBoxRef?.AddItem(entity.Text, entity.Value);
+        NewItemText = string.Empty;
+    }
+
+    private async Task RemoveItem()
+    {
+        if (string.IsNullOrEmpty(Selected)) return;
+
+        var dbItem = await DbContext.ListBoxItems
+          .FirstOrDefaultAsync(x => x.Value == Selected);
+
+        if (dbItem != null)
+        {
+            DbContext.ListBoxItems.Remove(dbItem);
+            await DbContext.SaveChangesAsync();
+        }
+
+        await ListBoxRef!.RemoveSelectedAsync();
+    }
+}

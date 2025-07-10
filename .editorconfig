@@ -1,0 +1,4 @@
+﻿[*.cs]
+
+# ASP0006: Do not use non-literal sequence numbers
+dotnet_diagnostic.ASP0006.severity = none
